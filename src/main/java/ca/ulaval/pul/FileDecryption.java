@@ -6,46 +6,36 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import ca.ulaval.pul.AES.InvalidAESStreamException;
+import ca.ulaval.pul.AES.InvalidPasswordException;
+import ca.ulaval.pul.AES.StrongEncryptionNotAvailableException;
+
 public class FileDecryption {
-    
-    private File SOURCE;
-    private File TARGET;
-    private AESEncryptionSupport DEC;
-    private final int BUFFER_SIZE = 2000000000;
-    
-    FileDecryption(String sourceFile,String password)throws FileNotFoundException
-    {
-        this.SOURCE = new File(sourceFile);
-        if(!SOURCE.exists())throw new FileNotFoundException("File not found");
-        this.DEC = new AESEncryptionSupport(password);
+    FileDecryption() {
     }
     
-    private void setTarget(String destinationFile) {
-        this.TARGET = new File(SOURCE.getParent()  + "\\" + destinationFile);
-    }
-    
-    public void decrypt(String destinationFile) {
-        FileOutputStream fos = null;
-        FileInputStream fis = null;
-        try{
-            this.setTarget(destinationFile);
-            fos = new FileOutputStream(TARGET);
-            File file = this.SOURCE;
-            fis = new FileInputStream(file);
-            int remaining = fis.available();
-            while(remaining>0){
-                byte [] buffer = new byte[Math.min(remaining, BUFFER_SIZE)];
-                remaining -= fis.read(buffer);
-                byte[] b = DEC.decrypt(buffer);
-                fos.write(b);
-            }
-            fis.close();
-            fos.close();
-            fis = null;
-            fos = null;
+    public void decrypt(String encryptedFilename, String decryptedFilename, String password) throws FileNotFoundException {
+        File encryptedFile = new File(encryptedFilename);
+        if(!encryptedFile.exists()) {
+        	throw new FileNotFoundException();
+        }
+        File decryptedFile = new File(encryptedFile.getParent()  + "\\" + decryptedFilename);
+        try (
+    		FileInputStream fis = new FileInputStream(encryptedFile);
+    		FileOutputStream fos = new FileOutputStream(decryptedFile);
+        )
+        {
+            AES aes = new AES();
+            aes.decrypt(password, fis, fos);
         } catch (IOException ex) {
         	ex.printStackTrace();
-        }
+        } catch (InvalidPasswordException e) {
+			e.printStackTrace();
+		} catch (InvalidAESStreamException e) {
+			e.printStackTrace();
+		} catch (StrongEncryptionNotAvailableException e) {
+			e.printStackTrace();
+		}
     }
 
     public static void main(String[] args) {
@@ -53,13 +43,13 @@ public class FileDecryption {
     		System.err.println("Usage: FileDecription <filename>");
     		System.exit(-1);
     	}
-        try{
-        	String filename = args[0];
-            FileDecryption enc = new FileDecryption(".\\" + filename, "Le fond de l'air est frais!");
-            enc.decrypt(filename + ".decrypted");
-        } catch (FileNotFoundException ex) {
-        	ex.printStackTrace();
-        }
+    	String filename = args[0];
+        FileDecryption enc = new FileDecryption();
+        try {
+			enc.decrypt(".\\" + filename, filename + ".decrypted", "Le fond de l'air est frais!");
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
     }    
 }
 
